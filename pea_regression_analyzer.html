@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Régression & Bollinger Monthly — PEA Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #111418;
+    --bg3: #181c22;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaed;
+    --muted: #6b7280;
+    --accent: #f0c040;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --teal: #2dd4bf;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .divider-v {
+    width: 1px;
+    height: 20px;
+    background: var(--border2);
+  }
+
+  .header-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .controls {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .control-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  select, input[type="text"] {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="text"] {
+    width: 120px;
+    text-transform: uppercase;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+  }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost:hover {
+    color: var(--text);
+    border-color: var(--border2);
+    background: var(--bg3);
+  }
+
+  .btn-ghost.active {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .main {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .stat-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stat-value.bull { color: var(--green); }
+  .stat-value.bear { color: var(--red); }
+  .stat-value.warn { color: var(--accent); }
+  .stat-value.neu { color: var(--blue); }
+
+  .signal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  .signal-bull { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .signal-bear { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .signal-neu { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+  .signal-warn { background: rgba(240,192,64,0.15); color: var(--accent); border: 1px solid rgba(240,192,64,0.3); }
+
+  .chart-container {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chart-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+
+  .legend-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .legend-line {
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    padding: 12px 8px 8px;
+  }
+
+  .status-bar {
+    background: var(--bg3);
+    border-top: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .status-item {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .status-item span {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 420px;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .error-box {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--red);
+    display: none;
+  }
+
+  .portfolio-quick {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .quick-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(240,192,64,0.06);
+  }
+
+  .interpretation {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  .interp-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .interp-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .interp-content {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">PEA Analyzer</div>
+    <div class="divider-v"></div>
+    <div class="header-title">Régression log-linéaire + Bandes de Bollinger Monthly</div>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)" id="last-update">—</div>
+</div>
+
+<div class="controls">
+  <div class="control-group">
+    <span class="control-label">Ticker</span>
+    <input type="text" id="ticker-input" value="RMS.PA" placeholder="RMS.PA" />
+  </div>
+  <div class="control-group">
+    <span class="control-label">Période</span>
+    <select id="period-select">
+      <option value="5y">5 ans</option>
+      <option value="10y" selected>10 ans</option>
+      <option value="max">Max</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <span class="control-label">Bollinger</span>
+    <select id="bb-period">
+      <option value="14">14 mois</option>
+      <option value="20" selected>20 mois</option>
+      <option value="26">26 mois</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <span class="control-label">BB σ</span>
+    <select id="bb-std">
+      <option value="1.5">1.5</option>
+      <option value="2" selected>2.0</option>
+      <option value="2.5">2.5</option>
+    </select>
+  </div>
+  <button class="btn" id="load-btn" onclick="loadData()">Analyser</button>
+  <div class="portfolio-quick">
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);align-self:center">PEA:</span>
+    <button class="quick-btn" onclick="quickLoad('RMS.PA')">Hermès</button>
+    <button class="quick-btn" onclick="quickLoad('ASML.AS')">ASML</button>
+    <button class="quick-btn" onclick="quickLoad('SU.PA')">Schneider</button>
+    <button class="quick-btn" onclick="quickLoad('AI.PA')">Air Liquide</button>
+    <button class="quick-btn" onclick="quickLoad('ENGI.PA')">Engie</button>
+    <button class="quick-btn" onclick="quickLoad('TTE.PA')">TotalEnergies</button>
+    <button class="quick-btn" onclick="quickLoad('OR.PA')">L'Oréal</button>
+    <button class="quick-btn" onclick="quickLoad('RUI.PA')">Rubis</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="error-box" class="error-box"></div>
+
+  <div class="stats-row" id="stats-row" style="display:none">
+    <div class="stat-card">
+      <div class="stat-label">Cours actuel</div>
+      <div class="stat-value" id="s-price">—</div>
+      <div class="stat-sub" id="s-change">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Régression (médiane)</div>
+      <div class="stat-value neu" id="s-reg">—</div>
+      <div class="stat-sub" id="s-reg-gap">vs cours</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Z-score régression</div>
+      <div class="stat-value" id="s-zscore">—</div>
+      <div class="stat-sub" id="s-zscore-interp">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Bollinger bas M</div>
+      <div class="stat-value" id="s-bb-low">—</div>
+      <div class="stat-sub" id="s-bb-pos">position</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Bollinger haut M</div>
+      <div class="stat-value" id="s-bb-high">—</div>
+      <div class="stat-sub" id="s-bb-pos2">position</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Signal</div>
+      <div id="s-signal">—</div>
+      <div class="stat-sub" id="s-signal-desc">—</div>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <div class="chart-header">
+      <div class="chart-title" id="chart-title">— / Régression log-linéaire + Bollinger Monthly</div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-line" style="background:#e8eaed"></div>Cours réel</div>
+        <div class="legend-item"><div class="legend-line" style="background:#60a5fa"></div>Régression</div>
+        <div class="legend-item"><div class="legend-line" style="background:rgba(96,165,250,0.4);border-top:1px dashed #60a5fa"></div>±2SD rég.</div>
+        <div class="legend-item"><div class="legend-line" style="background:#ef4444;border-top:1px dashed #ef4444"></div>BB bas M</div>
+        <div class="legend-item"><div class="legend-line" style="background:#22c55e;border-top:1px dashed #22c55e"></div>BB haut M</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f0c040"></div>Signal haussier</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Signal baissier</div>
+      </div>
+    </div>
+    <div id="chart-loading" class="loading">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">Entrez un ticker et cliquez sur Analyser</div>
+    </div>
+    <div class="chart-wrap" id="chart-wrap" style="display:none">
+      <canvas id="mainChart" role="img" aria-label="Graphique régression et Bollinger mensuel"></canvas>
+    </div>
+    <div class="status-bar" id="status-bar" style="display:none">
+      <div class="status-item">Données: <span id="st-count">—</span> mois</div>
+      <div class="status-item">Début: <span id="st-start">—</span></div>
+      <div class="status-item">Fin: <span id="st-end">—</span></div>
+      <div class="status-item">R²: <span id="st-r2">—</span></div>
+      <div class="status-item">Pente annuelle: <span id="st-slope">—</span></div>
+      <div class="status-item">Source: <span>Yahoo Finance</span></div>
+    </div>
+  </div>
+
+  <div class="interpretation" id="interpretation" style="display:none">
+    <div class="interp-block">
+      <div class="interp-title">Lecture régression</div>
+      <div class="interp-content" id="interp-reg">—</div>
+    </div>
+    <div class="interp-block">
+      <div class="interp-title">Lecture Bollinger</div>
+      <div class="interp-content" id="interp-bb">—</div>
+    </div>
+    <div class="interp-block">
+      <div class="interp-title">Signal & action</div>
+      <div class="interp-content" id="interp-action">—</div>
+    </div>
+    <div class="interp-block">
+      <div class="interp-title">Contexte historique</div>
+      <div class="interp-content" id="interp-hist">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Données via Yahoo Finance · Calculs : régression log-linéaire OLS, Bollinger Monthly (MA + σ) · Pour usage informatif uniquement
+</div>
+
+<script>
+let chartInstance = null;
+
+function quickLoad(ticker) {
+  document.getElementById('ticker-input').value = ticker;
+  loadData();
+}
+
+async function loadData() {
+  const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  const period = document.getElementById('period-select').value;
+  const bbPeriod = parseInt(document.getElementById('bb-period').value);
+  const bbStd = parseFloat(document.getElementById('bb-std').value);
+
+  setLoading(true);
+  hideError();
+
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1mo&range=${period}&includePrePost=false`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+    let data;
+    try {
+      const resp = await fetch(proxyUrl);
+      const json = await resp.json();
+      data = JSON.parse(json.contents);
+    } catch(e) {
+      // fallback direct
+      const resp2 = await fetch(url);
+      data = await resp2.json();
+    }
+
+    if (!data?.chart?.result?.[0]) throw new Error('Pas de données pour ' + ticker);
+
+    const result = data.chart.result[0];
+    const timestamps = result.timestamp;
+    const closes = result.indicators.quote[0].close;
+    const meta = result.meta;
+
+    const pairs = timestamps.map((t, i) => ({
+      date: new Date(t * 1000),
+      price: closes[i]
+    })).filter(p => p.price != null && !isNaN(p.price));
+
+    if (pairs.length < 20) throw new Error('Données insuffisantes (' + pairs.length + ' mois)');
+
+    const labels = pairs.map(p => p.date.toLocaleDateString('fr-FR', {month:'short', year:'2-digit'}));
+    const prices = pairs.map(p => p.price);
+    const n = prices.length;
+
+    // LOG-LINEAR REGRESSION
+    const logPrices = prices.map(p => Math.log(p));
+    const xArr = Array.from({length: n}, (_, i) => i);
+    const xMean = xArr.reduce((a,b) => a+b, 0) / n;
+    const yMean = logPrices.reduce((a,b) => a+b, 0) / n;
+    const ssXY = xArr.reduce((s, x, i) => s + (x - xMean) * (logPrices[i] - yMean), 0);
+    const ssXX = xArr.reduce((s, x) => s + (x - xMean) ** 2, 0);
+    const slope = ssXY / ssXX;
+    const intercept = yMean - slope * xMean;
+    const regLine = xArr.map(x => Math.exp(intercept + slope * x));
+
+    // Residuals std
+    const residuals = logPrices.map((y, i) => y - (intercept + slope * i));
+    const residStd = Math.sqrt(residuals.reduce((s, r) => s + r*r, 0) / n);
+    const reg1Up = xArr.map(x => Math.exp(intercept + slope * x + residStd));
+    const reg1Dn = xArr.map(x => Math.exp(intercept + slope * x - residStd));
+    const reg2Up = xArr.map(x => Math.exp(intercept + slope * x + 2 * residStd));
+    const reg2Dn = xArr.map(x => Math.exp(intercept + slope * x - 2 * residStd));
+
+    // R²
+    const ssTot = logPrices.reduce((s, y) => s + (y - yMean)**2, 0);
+    const ssRes = residuals.reduce((s, r) => s + r*r, 0);
+    const r2 = 1 - ssRes / ssTot;
+
+    // BOLLINGER MONTHLY
+    const bbHigh = [], bbLow = [], bbMid = [];
+    for (let i = 0; i < n; i++) {
+      if (i < bbPeriod - 1) { bbHigh.push(null); bbLow.push(null); bbMid.push(null); continue; }
+      const slice = prices.slice(i - bbPeriod + 1, i + 1);
+      const mean = slice.reduce((a,b)=>a+b,0) / bbPeriod;
+      const std = Math.sqrt(slice.reduce((s,p)=>s+(p-mean)**2,0) / bbPeriod);
+      bbMid.push(mean);
+      bbHigh.push(mean + bbStd * std);
+      bbLow.push(mean - bbStd * std);
+    }
+
+    // SIGNALS
+    const signals = prices.map((p, i) => {
+      const bb = bbLow[i];
+      const bb2 = bbLow[i-1];
+      if (bb == null || bb2 == null) return null;
+      // Haussier: cours touche ou passe sous BB basse et remonte
+      if (prices[i-1] !== undefined && prices[i-1] <= bb2 && p > bb) return 'bull';
+      // Baissier: cours touche ou passe au-dessus BB haute et redescend
+      const bbH = bbHigh[i]; const bbH2 = bbHigh[i-1];
+      if (bbH != null && bbH2 != null && prices[i-1] !== undefined && prices[i-1] >= bbH2 && p < bbH) return 'bear';
+      return null;
+    });
+
+    // CURRENT STATS
+    const lastPrice = prices[n-1];
+    const lastReg = regLine[n-1];
+    const lastBBLow = bbLow[n-1];
+    const lastBBHigh = bbHigh[n-1];
+    const lastResidual = residuals[n-1];
+    const zScore = lastResidual / residStd;
+    const annualSlope = ((Math.exp(slope * 12) - 1) * 100).toFixed(1);
+
+    updateStats({
+      ticker, lastPrice, lastReg, lastBBLow, lastBBHigh,
+      zScore, annualSlope, r2, meta, n, pairs
+    });
+
+    updateInterpretation({ ticker, lastPrice, lastReg, lastBBLow, lastBBHigh, zScore, annualSlope, r2, pairs, signals });
+
+    document.getElementById('last-update').textContent = 'Mis à jour: ' + new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('st-count').textContent = n;
+    document.getElementById('st-start').textContent = pairs[0].date.toLocaleDateString('fr-FR', {month:'short',year:'numeric'});
+    document.getElementById('st-end').textContent = pairs[n-1].date.toLocaleDateString('fr-FR', {month:'short',year:'numeric'});
+    document.getElementById('st-r2').textContent = (r2 * 100).toFixed(1) + '%';
+    document.getElementById('st-slope').textContent = '+' + annualSlope + '%/an';
+    document.getElementById('chart-title').textContent = ticker + '  /  Régression log-linéaire + Bollinger Monthly (' + bbPeriod + ' mois, ' + bbStd + 'σ)';
+
+    drawChart(labels, prices, regLine, reg1Up, reg1Dn, reg2Up, reg2Dn, bbHigh, bbLow, bbMid, signals);
+    setLoading(false);
+
+  } catch(err) {
+    setLoading(false);
+    showError('Erreur: ' + err.message + '. Vérifiez le ticker (ex: RMS.PA, ASML.AS, OR.PA)');
+    console.error(err);
+  }
+}
+
+function updateStats({ ticker, lastPrice, lastReg, lastBBLow, lastBBHigh, zScore, annualSlope, r2, meta, n, pairs }) {
+  const fmt = v => v >= 1000 ? v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '€' : v.toFixed(2) + '€';
+  const pct = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+
+  document.getElementById('s-price').textContent = fmt(lastPrice);
+  const regGap = (lastPrice - lastReg) / lastReg;
+  document.getElementById('s-reg').textContent = fmt(lastReg);
+  document.getElementById('s-reg-gap').textContent = pct(regGap) + ' vs médiane';
+
+  const zEl = document.getElementById('s-zscore');
+  zEl.textContent = zScore.toFixed(2);
+  zEl.className = 'stat-value ' + (zScore < -1.5 ? 'bull' : zScore > 1.5 ? 'bear' : 'neu');
+  document.getElementById('s-zscore-interp').textContent =
+    zScore < -2 ? '🔵 Survente extrême' :
+    zScore < -1.5 ? '🟢 Survente forte' :
+    zScore < -1 ? '🟡 Légère survente' :
+    zScore > 2 ? '🔴 Surachat extrême' :
+    zScore > 1.5 ? '🟠 Surachat fort' :
+    zScore > 1 ? '🟡 Léger surachat' : '⚪ Zone neutre';
+
+  if (lastBBLow) {
+    document.getElementById('s-bb-low').textContent = fmt(lastBBLow);
+    const posLow = (lastPrice - lastBBLow) / lastBBLow;
+    const bbPosEl = document.getElementById('s-bb-pos');
+    bbPosEl.textContent = lastPrice < lastBBLow ? '⚠ Cours SOUS BB basse' : pct(posLow) + ' au-dessus';
+    bbPosEl.style.color = lastPrice < lastBBLow ? '#f0c040' : '#6b7280';
+  }
+
+  if (lastBBHigh) {
+    document.getElementById('s-bb-high').textContent = fmt(lastBBHigh);
+    const posHigh = (lastPrice - lastBBHigh) / lastBBHigh;
+    const bbPos2El = document.getElementById('s-bb-pos2');
+    bbPos2El.textContent = lastPrice > lastBBHigh ? '⚠ Cours AU-DESSUS BB haute' : pct(posHigh) + ' en dessous';
+    bbPos2El.style.color = lastPrice > lastBBHigh ? '#f0c040' : '#6b7280';
+  }
+
+  const sigEl = document.getElementById('s-signal');
+  const sigDescEl = document.getElementById('s-signal-desc');
+  const isNearBBLow = lastBBLow && lastPrice <= lastBBLow * 1.03;
+  const isNearBBHigh = lastBBHigh && lastPrice >= lastBBHigh * 0.97;
+
+  if (zScore < -1.5 && isNearBBLow) {
+    sigEl.innerHTML = '<span class="signal-badge signal-bull">● Signal haussier</span>';
+    sigDescEl.textContent = 'BB basse + survente régression';
+  } else if (zScore > 1.5 && isNearBBHigh) {
+    sigEl.innerHTML = '<span class="signal-badge signal-bear">● Signal baissier</span>';
+    sigDescEl.textContent = 'BB haute + surachat régression';
+  } else if (zScore < -1) {
+    sigEl.innerHTML = '<span class="signal-badge signal-warn">● Zone de vigilance</span>';
+    sigDescEl.textContent = 'Sous médiane régression';
+  } else if (zScore > 1) {
+    sigEl.innerHTML = '<span class="signal-badge signal-warn">● Zone de prudence</span>';
+    sigDescEl.textContent = 'Au-dessus médiane régression';
+  } else {
+    sigEl.innerHTML = '<span class="signal-badge signal-neu">● Neutre</span>';
+    sigDescEl.textContent = 'Dans la bande centrale';
+  }
+
+  document.getElementById('stats-row').style.display = 'grid';
+}
+
+function updateInterpretation({ ticker, lastPrice, lastReg, lastBBLow, lastBBHigh, zScore, annualSlope, r2, pairs, signals }) {
+  const fmt = v => v >= 1000 ? v.toFixed(0) + '€' : v.toFixed(2);
+  const pct = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+  const regGap = (lastPrice / lastReg - 1);
+
+  document.getElementById('interp-reg').textContent =
+    `Z-score de ${zScore.toFixed(2)} — le cours est à ${pct(Math.abs(regGap))} ${regGap < 0 ? 'en dessous' : 'au-dessus'} de la médiane de régression (${fmt(lastReg)}€). ` +
+    `La pente annualisée est de +${annualSlope}%/an. R²=${(r2*100).toFixed(1)}% indique ${r2 > 0.8 ? 'une très forte' : r2 > 0.6 ? 'une bonne' : 'une modérée'} cohérence de la tendance.`;
+
+  const bbLowGap = lastBBLow ? (lastPrice / lastBBLow - 1) : null;
+  document.getElementById('interp-bb').textContent =
+    lastBBLow ? `BB basse mensuelle à ${fmt(lastBBLow)}€ — cours ${bbLowGap < 0.03 ? 'très proche ou sous' : pct(bbLowGap) + ' au-dessus de'} la bande basse. ` +
+    `BB haute à ${fmt(lastBBHigh)}€. ` +
+    (bbLowGap < 0.03 ? 'Zone de survente statistique sur timeframe mensuel — historiquement favorable au rebond LT.' : 'Pas en zone de survente Bollinger actuellement.') : '—';
+
+  const bullSignals = signals.filter(s => s === 'bull').length;
+  const bearSignals = signals.filter(s => s === 'bear').length;
+  document.getElementById('interp-action').textContent =
+    `${bullSignals} signaux haussiers et ${bearSignals} signaux baissiers sur la période. ` +
+    (zScore < -1.5 ? `Z-score ${zScore.toFixed(2)} = zone d'accumulation statistique. Historiquement, ces niveaux précèdent un retour vers la médiane (+${pct(Math.abs(regGap))} potentiel de mean-reversion).` :
+     zScore > 1.5 ? `Z-score ${zScore.toFixed(2)} = zone de prudence/allègement. Le cours est statistiquement étendu au-dessus de sa tendance.` :
+     'Zone neutre — pas de signal extrême sur la régression.');
+
+  const maxZ = Math.max(...pairs.map((_, i) => {
+    const logP = Math.log(pairs[i].price);
+    return logP;
+  }));
+  document.getElementById('interp-hist').textContent =
+    `${pairs.length} mois de données analysés (${pairs[0].date.getFullYear()}–${pairs[pairs.length-1].date.getFullYear()}). ` +
+    `Dernier cours: ${fmt(lastPrice)}€. Médiane régression actuelle: ${fmt(lastReg)}€. ` +
+    `Potentiel de retour vers médiane: ${pct(regGap < 0 ? Math.abs(regGap) : -regGap)}.`;
+
+  document.getElementById('interpretation').style.display = 'grid';
+}
+
+function drawChart(labels, prices, regLine, reg1Up, reg1Dn, reg2Up, reg2Dn, bbHigh, bbLow, bbMid, signals) {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const n = prices.length;
+  const bullDots = prices.map((p, i) => signals[i] === 'bull' ? p : null);
+  const bearDots = prices.map((p, i) => signals[i] === 'bear' ? p : null);
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '+2SD rég.',
+          data: reg2Up,
+          borderColor: 'rgba(96,165,250,0.3)',
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 8
+        },
+        {
+          label: '+1SD rég.',
+          data: reg1Up,
+          borderColor: 'rgba(96,165,250,0.2)',
+          borderWidth: 1,
+          borderDash: [2, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 9
+        },
+        {
+          label: 'Régression',
+          data: regLine,
+          borderColor: '#60a5fa',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 10
+        },
+        {
+          label: '-1SD rég.',
+          data: reg1Dn,
+          borderColor: 'rgba(96,165,250,0.2)',
+          borderWidth: 1,
+          borderDash: [2, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 9
+        },
+        {
+          label: '-2SD rég.',
+          data: reg2Dn,
+          borderColor: 'rgba(96,165,250,0.3)',
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 8
+        },
+        {
+          label: 'BB haut M',
+          data: bbHigh,
+          borderColor: 'rgba(34,197,94,0.6)',
+          borderWidth: 1.2,
+          borderDash: [5, 3],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4,
+          order: 6
+        },
+        {
+          label: 'BB bas M',
+          data: bbLow,
+          borderColor: 'rgba(239,68,68,0.7)',
+          borderWidth: 1.2,
+          borderDash: [5, 3],
+          pointRadius: 0,
+          fill: '+1',
+          backgroundColor: 'rgba(239,68,68,0.04)',
+          tension: 0.4,
+          order: 5
+        },
+        {
+          label: 'Cours réel',
+          data: prices,
+          borderColor: '#e8eaed',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: false,
+          tension: 0.2,
+          order: 2
+        },
+        {
+          label: 'Signal haussier',
+          data: bullDots,
+          borderColor: '#f0c040',
+          backgroundColor: '#f0c040',
+          pointRadius: prices.map((_, i) => signals[i] === 'bull' ? 7 : 0),
+          pointStyle: 'circle',
+          showLine: false,
+          order: 1
+        },
+        {
+          label: 'Signal baissier',
+          data: bearDots,
+          borderColor: '#ef4444',
+          backgroundColor: '#ef4444',
+          pointRadius: prices.map((_, i) => signals[i] === 'bear' ? 7 : 0),
+          pointStyle: 'triangle',
+          showLine: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181c22',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+          bodyFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+          titleColor: '#e8eaed',
+          bodyColor: '#9ca3af',
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              if (ctx.parsed.y == null) return null;
+              const v = ctx.parsed.y;
+              const label = ctx.dataset.label;
+              const formatted = v >= 1000 ? v.toFixed(0) + '€' : v.toFixed(2) + '€';
+              return ' ' + label + ': ' + formatted;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: {
+            color: '#6b7280',
+            font: { family: "'IBM Plex Mono', monospace", size: 10 },
+            maxTicksLimit: 12,
+            maxRotation: 0
+          },
+          border: { color: 'rgba(255,255,255,0.08)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: {
+            color: '#6b7280',
+            font: { family: "'IBM Plex Mono', monospace", size: 10 },
+            callback: v => v >= 1000 ? v.toFixed(0) + '€' : v.toFixed(2)
+          },
+          border: { color: 'rgba(255,255,255,0.08)' }
+        }
+      }
+    }
+  });
+}
+
+function setLoading(loading) {
+  document.getElementById('chart-loading').style.display = loading ? 'flex' : 'none';
+  document.getElementById('chart-wrap').style.display = loading ? 'none' : 'block';
+  document.getElementById('status-bar').style.display = loading ? 'none' : 'flex';
+  document.getElementById('load-btn').disabled = loading;
+  if (loading) {
+    document.getElementById('chart-loading').innerHTML = `
+      <div class="spinner"></div>
+      <div class="loading-text">Chargement des données Yahoo Finance...</div>
+    `;
+    document.getElementById('stats-row').style.display = 'none';
+    document.getElementById('interpretation').style.display = 'none';
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('chart-loading').innerHTML = `<div style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">Erreur de chargement</div>`;
+  document.getElementById('chart-loading').style.display = 'flex';
+  document.getElementById('chart-wrap').style.display = 'none';
+}
+
+function hideError() {
+  document.getElementById('error-box').style.display = 'none';
+}
+
+// Auto-load Hermès on start
+window.addEventListener('load', () => loadData());
+</script>
+</body>
+</html>
